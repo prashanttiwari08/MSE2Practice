@@ -1,63 +1,72 @@
-require('dotenv').config();
-const express = require('express');
-const mongoose = require('mongoose');
-const bcrypt = require('bcrypt');
-const cors = require('cors');
+require("dotenv").config();
+const express = require("express");
+const mongoose = require("mongoose");
+const bcrypt = require("bcrypt");
+const cors = require("cors");
 
 const app = express();
 
-// --- Middleware ---
-app.use(cors());
+// ================== MIDDLEWARE ==================
+app.use(cors({
+  origin: "*", // allow all (safe for testing)
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type"]
+}));
+
+// Preflight requests handle (VERY IMPORTANT)
+app.options("*", cors());
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// --- Config ---
+// ================== CONFIG ==================
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI;
 
-// --- MongoDB Connection ---
+// ================== DB CONNECT ==================
 mongoose.connect(MONGO_URI)
-  .then(() => {
-    console.log("✅ MongoDB Connected Successfully");
-  })
-  .catch((err) => {
-    console.error("❌ MongoDB Connection Error:", err.message);
-  });
+  .then(() => console.log("✅ MongoDB Connected"))
+  .catch(err => console.error("❌ Mongo Error:", err.message));
 
-// --- Schema ---
+// ================== SCHEMA ==================
 const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: { type: String, required: true, unique: true },
-  password: { type: String, required: true }
+  name: String,
+  email: { type: String, unique: true },
+  password: String
 });
 
 const User = mongoose.model("User", userSchema);
 
-// --- Routes ---
+// ================== ROUTES ==================
 
 // Health check
-app.get('/', (req, res) => {
+app.get("/", (req, res) => {
   res.send("Backend is running 🚀");
 });
 
 // Register
-app.post('/register', async (req, res) => {
+app.post("/register", async (req, res) => {
   try {
-    console.log("Incoming Data:", req.body);
+    console.log("REGISTER BODY:", req.body);
 
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: "All fields required" });
+      return res.status(400).json({
+        success: false,
+        message: "All fields required"
+      });
     }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ success: false, message: "Email already exists" });
+      return res.status(400).json({
+        success: false,
+        message: "Email already exists"
+      });
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const newUser = new User({
       name,
@@ -69,11 +78,16 @@ app.post('/register', async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "User registered successfully"
+      message: "User registered successfully",
+      user: {
+        id: newUser._id,
+        name: newUser.name,
+        email: newUser.email
+      }
     });
 
-  } catch (error) {
-    console.error("REGISTER ERROR:", error);
+  } catch (err) {
+    console.error("REGISTER ERROR:", err);
     res.status(500).json({
       success: false,
       message: "Server error"
@@ -82,20 +96,26 @@ app.post('/register', async (req, res) => {
 });
 
 // Login
-app.post('/login', async (req, res) => {
+app.post("/login", async (req, res) => {
   try {
-    console.log("Login Data:", req.body);
+    console.log("LOGIN BODY:", req.body);
 
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: "Invalid credentials" });
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials"
+      });
     }
 
     res.status(200).json({
@@ -108,8 +128,8 @@ app.post('/login', async (req, res) => {
       }
     });
 
-  } catch (error) {
-    console.error("LOGIN ERROR:", error);
+  } catch (err) {
+    console.error("LOGIN ERROR:", err);
     res.status(500).json({
       success: false,
       message: "Server error"
@@ -117,7 +137,7 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// --- Server ---
+// ================== SERVER ==================
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
