@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { loginUser } from "../api/api";
+import { registerUser } from "../api/api";
 
-const Login = () => {
+const Register = () => {
   const [form, setForm] = useState({
+    name: "",
     email: "",
     password: ""
   });
@@ -17,17 +18,26 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const data = await loginUser(form);
+    const data = await registerUser(form);
 
     if (!data.success) {
       alert(data.message);
     } else {
-      alert("Login Successful");
+      alert("Registered Successfully");
+      setForm({ name: "", email: "", password: "" });
     }
   };
 
   return (
     <form onSubmit={handleSubmit}>
+      <input
+        name="name"
+        placeholder="Name"
+        value={form.name}
+        onChange={handleChange}
+      />
+      <br /><br />
+
       <input
         name="email"
         placeholder="Email"
@@ -45,9 +55,9 @@ const Login = () => {
       />
       <br /><br />
 
-      <button type="submit">Login</button>
+      <button type="submit">Register</button>
     </form>
   );
 };
 
-export default Login;
+export default Register;
